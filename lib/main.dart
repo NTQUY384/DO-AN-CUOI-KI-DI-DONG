@@ -1,41 +1,84 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-import 'package:url_launcher/url_launcher.dart';
+//import 'package:url_launcher/url_launcher.dart';
 
 void main() {
-  runApp(const UngDungSpaThuCung());
+  runApp(Cart(cartProvider: CartProvider(), child: const UngDungSpaThuCung()));
 }
 
-// ###############################################################################
-
-class UngDungSpaThuCung extends StatelessWidget {
+class UngDungSpaThuCung extends StatefulWidget {
   const UngDungSpaThuCung({super.key});
 
   @override
+  _UngDungSpaThuCungState createState() => _UngDungSpaThuCungState();
+}
+
+class _UngDungSpaThuCungState extends State<UngDungSpaThuCung> {
+  final CartProvider _cartProvider = CartProvider();
+
+  @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Spa Thú Cưng',
-      theme: ThemeData(
-        primarySwatch: Colors.blueGrey,
-        scaffoldBackgroundColor: Colors.white,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.lightBlueAccent,
-          foregroundColor: Colors.white,
+    return Cart(
+      cartProvider: _cartProvider, // Cung cấp CartProvider cho Cart
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'Spa Thú Cưng',
+        theme: ThemeData(
+          primarySwatch: Colors.blueGrey,
+          scaffoldBackgroundColor: Colors.white,
+          appBarTheme: const AppBarTheme(
+            backgroundColor: Colors.lightBlueAccent,
+            foregroundColor: Colors.white,
+          ),
+          bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+            selectedItemColor: Colors.lightBlueAccent,
+            unselectedItemColor: Colors.grey,
+            backgroundColor: Colors.white,
+          ),
         ),
-        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-          selectedItemColor: Colors.lightBlueAccent,
-          unselectedItemColor: Colors.grey,
-          backgroundColor: Colors.white,
-        ),
+        home: const ManHinhDangNhap(),
       ),
-      home: const ManHinhDangNhap(),
     );
   }
 }
 
-class ManHinhDangNhap extends StatelessWidget {
+// ################################################################################
+
+class ManHinhDangNhap extends StatefulWidget {
   const ManHinhDangNhap({super.key});
+
+  @override
+  State<ManHinhDangNhap> createState() => _ManHinhDangNhapState();
+}
+
+class _ManHinhDangNhapState extends State<ManHinhDangNhap> {
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+
+  void _kiemTraDangNhap() {
+    // Lấy email và mật khẩu từ các TextEditingController
+    String email = emailController.text.trim();
+    String password = passwordController.text.trim();
+
+    // Kiểm tra đăng nhập
+    if (UserManager.loginUser(email, password)) {
+      // Sửa tên lớp
+      // Đăng nhập thành công
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const ManHinhLoading()),
+      );
+    } else {
+      // Đăng nhập thất bại - Hiển thị Snackbar
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Email hoặc mật khẩu không đúng!"),
+          backgroundColor: Colors.redAccent,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +89,7 @@ class ManHinhDangNhap extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Thêm logo ở trên
+            // Logo
             Image.network(
               'https://benhvienthuyanipet.com/wp-content/uploads/2021/12/petshop1.png',
               height: 120,
@@ -64,6 +107,7 @@ class ManHinhDangNhap extends StatelessWidget {
 
             // Ô nhập email
             TextField(
+              controller: emailController,
               decoration: const InputDecoration(
                 labelText: 'Email',
                 border: OutlineInputBorder(),
@@ -73,6 +117,7 @@ class ManHinhDangNhap extends StatelessWidget {
 
             // Ô nhập mật khẩu
             TextField(
+              controller: passwordController,
               decoration: const InputDecoration(
                 labelText: 'Mật khẩu',
                 border: OutlineInputBorder(),
@@ -85,19 +130,9 @@ class ManHinhDangNhap extends StatelessWidget {
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.lightBlueAccent,
-                minimumSize: const Size(
-                  double.infinity,
-                  50,
-                ), // Đặt chiều rộng tối đa
+                minimumSize: const Size(double.infinity, 50),
               ),
-              onPressed: () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ManHinhLoading(),
-                  ),
-                );
-              },
+              onPressed: _kiemTraDangNhap, // Gọi hàm kiểm tra đăng nhập
               child: const Text(
                 'Đăng Nhập',
                 style: TextStyle(fontSize: 16, color: Colors.white),
@@ -179,8 +214,61 @@ class _ManHinhLoadingState extends State<ManHinhLoading> {
 
 // #############################################################################################
 
-class ManHinhDangKy extends StatelessWidget {
+class User {
+  String name;
+  String email;
+  String password;
+
+  User({required this.name, required this.email, required this.password});
+}
+
+class UserManager {
+  static final List<User> _users = [
+    User(
+      name: "Admin",
+      email: "admin@gmail.com",
+      password: "123",
+    ), // Tài khoản mặc định
+  ];
+
+  static User? currentUser; // Thêm biến để lưu trữ người dùng hiện tại
+
+  static void registerUser(String name, String email, String password) {
+    _users.add(User(name: name, email: email, password: password));
+    currentUser = _users.last; // Cập nhật người dùng hiện tại
+  }
+
+  static bool loginUser(String email, String password) {
+    final user = _users.firstWhere(
+      (user) => user.email == email && user.password == password,
+      orElse:
+          () => User(
+            name: "",
+            email: "",
+            password: "",
+          ), // Trả về một User mặc định nếu không tìm thấy
+    );
+
+    if (user.email.isNotEmpty) {
+      // Kiểm tra xem người dùng có hợp lệ không
+      currentUser = user; // Cập nhật người dùng hiện tại
+      return true;
+    }
+    return false;
+  }
+}
+
+class ManHinhDangKy extends StatefulWidget {
   const ManHinhDangKy({super.key});
+
+  @override
+  _ManHinhDangKyState createState() => _ManHinhDangKyState();
+}
+
+class _ManHinhDangKyState extends State<ManHinhDangKy> {
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -192,6 +280,7 @@ class ManHinhDangKy extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             TextField(
+              controller: _nameController,
               decoration: InputDecoration(
                 labelText: 'Họ và Tên',
                 border: OutlineInputBorder(),
@@ -199,6 +288,7 @@ class ManHinhDangKy extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             TextField(
+              controller: _emailController,
               decoration: InputDecoration(
                 labelText: 'Email',
                 border: OutlineInputBorder(),
@@ -206,6 +296,7 @@ class ManHinhDangKy extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             TextField(
+              controller: _passwordController,
               decoration: InputDecoration(
                 labelText: 'Mật khẩu',
                 border: OutlineInputBorder(),
@@ -218,6 +309,14 @@ class ManHinhDangKy extends StatelessWidget {
                 backgroundColor: Colors.lightBlueAccent,
               ),
               onPressed: () {
+                String name = _nameController.text;
+                String email = _emailController.text;
+                String password = _passwordController.text;
+
+                // Đăng ký người dùng
+                UserManager.registerUser(name, email, password);
+
+                // Quay lại màn hình đăng nhập
                 Navigator.pop(context);
               },
               child: const Text('Đăng Ký'),
@@ -506,6 +605,9 @@ class ChiTietDichVu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cart = Cart.of(context); // Lấy Cart từ context
+    final cartProvider = cart.cartProvider; // Lấy CartProvider từ Cart
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -562,34 +664,12 @@ class ChiTietDichVu extends StatelessWidget {
               Center(
                 child: ElevatedButton(
                   onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder:
-                          (context) => AlertDialog(
-                            title: const Text('Xác nhận đặt dịch vụ'),
-                            content: Text(
-                              'Bạn có chắc muốn đặt dịch vụ: ${dichVu['ten']}?',
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text('Hủy'),
-                              ),
-                              ElevatedButton(
-                                onPressed: () {
-                                  Navigator.pop(context);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'Bạn đã đặt dịch vụ: ${dichVu['ten']}',
-                                      ),
-                                    ),
-                                  );
-                                },
-                                child: const Text('Xác nhận'),
-                              ),
-                            ],
-                          ),
+                    // Thêm sản phẩm vào giỏ hàng
+                    cartProvider.addItem(dichVu); // Gọi addItem từ cartProvider
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Bạn đã đặt dịch vụ: ${dichVu['ten']}'),
+                      ),
                     );
                   },
                   style: ElevatedButton.styleFrom(
@@ -843,19 +923,23 @@ class ManHinhUuDai extends StatelessWidget {
 class ManHinhHoTroKhachHang extends StatelessWidget {
   const ManHinhHoTroKhachHang({super.key});
 
-  void _launchEmail() async {
-    final Uri emailUri = Uri(scheme: 'mailto', path: 'support@spathuccung.com');
-    if (await canLaunchUrl(emailUri)) {
-      await launchUrl(emailUri);
-    }
-  }
+  // void _launchEmail() async {
+  //   final Uri emailUri = Uri(scheme: 'mailto', path: 'support@spathuccung.com');
+  //   if (await canLaunchUrl(emailUri)) {
+  //     await launchUrl(emailUri);
+  //   } else {
+  //     throw 'Could not launch $emailUri';
+  //   }
+  // }
 
-  void _launchFacebook() async {
-    final Uri facebookUri = Uri.parse('https://facebook.com/spathuccung');
-    if (await canLaunchUrl(facebookUri)) {
-      await launchUrl(facebookUri);
-    }
-  }
+  // void _launchFacebook() async {
+  //   final Uri facebookUri = Uri.parse('https://facebook.com/NtQ384');
+  //   if (await canLaunchUrl(facebookUri)) {
+  //     await launchUrl(facebookUri, mode: LaunchMode.externalApplication);
+  //   } else {
+  //     throw 'Could not launch $facebookUri';
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -870,13 +954,13 @@ class ManHinhHoTroKhachHang extends StatelessWidget {
               leading: Icon(Icons.email, color: Colors.blueGrey),
               title: Text('Gửi Email Hỗ Trợ'),
               subtitle: Text('support@spathuccung.com'),
-              onTap: _launchEmail,
+              //onTap: _launchEmail,
             ),
             ListTile(
               leading: Icon(Icons.facebook, color: Colors.blue),
               title: Text('Fanpage Facebook'),
               subtitle: Text('facebook.com/spathuccung'),
-              onTap: _launchFacebook,
+              //onTap: _launchFacebook,
             ),
             const Divider(),
             Expanded(child: ChatBotWidget()),
@@ -967,8 +1051,15 @@ class _ChatBotWidgetState extends State<ChatBotWidget> {
 
 // #############################################################################################
 
-class ManHinhCaiDat extends StatelessWidget {
+class ManHinhCaiDat extends StatefulWidget {
   const ManHinhCaiDat({super.key});
+
+  @override
+  _ManHinhCaiDatState createState() => _ManHinhCaiDatState();
+}
+
+class _ManHinhCaiDatState extends State<ManHinhCaiDat> {
+  String matKhauHienTai = "123"; // Mật khẩu mặc định (chỉ dùng thử nghiệm)
 
   @override
   Widget build(BuildContext context) {
@@ -978,31 +1069,36 @@ class ManHinhCaiDat extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         children: [
           ListTile(
-            leading: Icon(Icons.person, color: Colors.blueGrey),
+            leading: const Icon(Icons.person, color: Colors.blueGrey),
             title: Text(
-              'Nguyễn Văn A',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              UserManager.currentUser?.name ?? "Người dùng",
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             subtitle: Text(
-              'nguyenvana@example.com',
-              style: TextStyle(fontSize: 16),
+              UserManager.currentUser?.email ?? "Chưa có email",
+              style: const TextStyle(fontSize: 16),
             ),
           ),
           const Divider(),
           ListTile(
-            leading: Icon(Icons.edit),
-            title: Text('Đổi tên'),
-            onTap: () {},
+            leading: const Icon(Icons.edit),
+            title: const Text('Đổi tên'),
+            onTap: () => _doiTenNguoiDung(context),
           ),
           ListTile(
-            leading: Icon(Icons.lock),
-            title: Text('Đổi mật khẩu'),
-            onTap: () {},
+            leading: const Icon(Icons.email),
+            title: const Text('Đổi Email'),
+            onTap: () => _doiEmail(context),
           ),
           ListTile(
-            leading: Icon(Icons.info_outline, color: Colors.blueGrey),
-            title: Text('About'),
-            subtitle: Text('Phiên bản 1.0.0\nNhà phát triển: QQTĐ Team'),
+            leading: const Icon(Icons.lock),
+            title: const Text('Đổi mật khẩu'),
+            onTap: () => _doiMatKhau(context),
+          ),
+          ListTile(
+            leading: const Icon(Icons.info_outline, color: Colors.blueGrey),
+            title: const Text('About'),
+            subtitle: const Text('Phiên bản 1.0.0\nNhà phát triển: QQTĐ Team'),
             onTap: () {
               showAboutDialog(
                 context: context,
@@ -1013,19 +1109,249 @@ class ManHinhCaiDat extends StatelessWidget {
             },
           ),
           ListTile(
-            leading: Icon(Icons.bug_report, color: Colors.orange),
-            title: Text('Báo cáo lỗi', style: TextStyle(color: Colors.orange)),
-            onTap: () {
-              // Thêm hành động báo cáo lỗi
-            },
-          ),
-          ListTile(
-            leading: Icon(Icons.logout, color: Colors.red),
-            title: Text('Đăng xuất', style: TextStyle(color: Colors.red)),
-            onTap: () {},
+            leading: const Icon(Icons.logout, color: Colors.red),
+            title: const Text('Đăng xuất', style: TextStyle(color: Colors.red)),
+            onTap: () => _dangXuat(context),
           ),
         ],
       ),
+    );
+  }
+
+  // Hàm đổi tên người dùng
+  void _doiTenNguoiDung(BuildContext context) {
+    TextEditingController tenMoiController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Đổi tên"),
+          content: TextField(
+            controller: tenMoiController,
+            decoration: const InputDecoration(
+              labelText: "Nhập tên mới",
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Hủy"),
+            ),
+            TextButton(
+              onPressed: () {
+                if (tenMoiController.text.isNotEmpty) {
+                  setState(() {
+                    UserManager.currentUser?.name =
+                        tenMoiController.text; // Cập nhật tên người dùng
+                  });
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        "Tên đã được cập nhật thành: ${UserManager.currentUser?.name}",
+                      ),
+                    ),
+                  );
+                }
+              },
+              child: const Text("Lưu", style: TextStyle(color: Colors.blue)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Hàm đổi Email
+  // Hàm đổi Email
+  void _doiEmail(BuildContext context) {
+    TextEditingController emailMoiController = TextEditingController();
+    TextEditingController matKhauController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Đổi Email"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: emailMoiController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  labelText: "Nhập email mới",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: matKhauController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: "Nhập mật khẩu",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Hủy"),
+            ),
+            TextButton(
+              onPressed: () {
+                // Kiểm tra mật khẩu
+                if (matKhauController.text !=
+                    UserManager.currentUser?.password) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Mật khẩu không chính xác")),
+                  );
+                } else if (emailMoiController.text.isEmpty ||
+                    !emailMoiController.text.contains("@")) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Email không hợp lệ")),
+                  );
+                } else {
+                  setState(() {
+                    UserManager.currentUser?.email =
+                        emailMoiController.text; // Cập nhật email người dùng
+                  });
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        "Email đã được cập nhật thành: ${UserManager.currentUser?.email}",
+                      ),
+                    ),
+                  );
+                }
+              },
+              child: const Text("Lưu", style: TextStyle(color: Colors.blue)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Hàm đổi mật khẩu
+  void _doiMatKhau(BuildContext context) {
+    TextEditingController matKhauCuController = TextEditingController();
+    TextEditingController matKhauMoiController = TextEditingController();
+    TextEditingController xacNhanMatKhauController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Đổi mật khẩu"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: matKhauCuController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: "Mật khẩu hiện tại",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: matKhauMoiController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: "Mật khẩu mới",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: xacNhanMatKhauController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: "Xác nhận mật khẩu mới",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Hủy"),
+            ),
+            TextButton(
+              onPressed: () {
+                // Kiểm tra mật khẩu hiện tại
+                if (matKhauCuController.text !=
+                    UserManager.currentUser?.password) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Mật khẩu hiện tại không đúng"),
+                    ),
+                  );
+                } else if (matKhauMoiController.text !=
+                    xacNhanMatKhauController.text) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Mật khẩu xác nhận không khớp"),
+                    ),
+                  );
+                } else {
+                  setState(() {
+                    UserManager.currentUser?.password =
+                        matKhauMoiController.text; // Cập nhật mật khẩu
+                  });
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Mật khẩu đã được cập nhật thành công"),
+                    ),
+                  );
+                }
+              },
+              child: const Text("Lưu", style: TextStyle(color: Colors.blue)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _dangXuat(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Xác nhận đăng xuất"),
+          content: const Text("Bạn có chắc chắn muốn đăng xuất không?"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Hủy"),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ManHinhDangNhap(),
+                  ),
+                  (route) => false,
+                );
+              },
+              child: const Text(
+                "Đăng xuất",
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -1040,63 +1366,201 @@ class ManHinhGioHang extends StatefulWidget {
 }
 
 class _ManHinhGioHangState extends State<ManHinhGioHang> {
-  List<Map<String, String>> gioHang = [];
-
   @override
   Widget build(BuildContext context) {
+    final cart = Cart.of(context); // Lấy Cart từ context
+    final cartProvider = cart.cartProvider; // Lấy CartProvider từ Cart
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Giỏ Hàng')),
+      appBar: AppBar(
+        title: const Text(
+          'Giỏ Hàng',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.orangeAccent,
+        centerTitle: true,
+      ),
       body:
-          gioHang.isEmpty
+          cartProvider.items.isEmpty
               ? const Center(
                 child: Text(
                   'Giỏ hàng trống!',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey,
+                  ),
                 ),
               )
-              : ListView.builder(
-                itemCount: gioHang.length,
-                itemBuilder: (context, index) {
-                  return Card(
-                    margin: const EdgeInsets.all(8.0),
-                    child: ListTile(
-                      leading: Image.network(
-                        gioHang[index]['hinhAnh']!,
-                        width: 60,
-                        height: 60,
-                        fit: BoxFit.cover,
-                      ),
-                      title: Text(gioHang[index]['ten']!),
-                      subtitle: Text('Giá: ${gioHang[index]['gia']}'),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () {
-                          setState(() {
-                            gioHang.removeAt(index);
-                          });
-                        },
-                      ),
+              : Column(
+                children: [
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: cartProvider.items.length,
+                      itemBuilder: (context, index) {
+                        return Card(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 3,
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          child: ListTile(
+                            leading: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                cartProvider.items[index]['hinhAnh']!,
+                                width: 60,
+                                height: 60,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            title: Text(
+                              cartProvider.items[index]['ten']!,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            subtitle: Text(
+                              'Giá: ${cartProvider.items[index]['gia']}',
+                              style: const TextStyle(color: Colors.deepOrange),
+                            ),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () {
+                                setState(() {
+                                  cartProvider.removeItem(index);
+                                });
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Sản phẩm đã được xóa khỏi giỏ hàng!',
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                  );
-                },
+                  ),
+                  _buildTotalPrice(cartProvider),
+                ],
               ),
       bottomNavigationBar:
-          gioHang.isEmpty
-              ? null
-              : Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: ElevatedButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Đặt hàng thành công!')),
-                    );
-                    setState(() {
-                      gioHang.clear();
-                    });
-                  },
-                  child: const Text('Xác nhận đặt hàng'),
-                ),
-              ),
+          cartProvider.items.isEmpty ? null : _buildOrderButton(cartProvider),
     );
   }
+
+  Widget _buildTotalPrice(CartProvider cartProvider) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Card(
+        color: Colors.orangeAccent.withOpacity(0.2),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Text(
+            'Tổng số tiền: ${formatCurrency(cartProvider.totalPrice())}',
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOrderButton(CartProvider cartProvider) {
+    return Padding(
+      padding: const EdgeInsets.all(12.0),
+      child: ElevatedButton.icon(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.orangeAccent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+        ),
+        onPressed: () {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Đặt hàng thành công!')));
+          setState(() {
+            cartProvider.clear(); // Xóa tất cả sản phẩm trong giỏ hàng
+          });
+        },
+        icon: const Icon(Icons.shopping_cart_checkout, color: Colors.white),
+        label: const Text(
+          'Xác nhận đặt hàng',
+          style: TextStyle(
+            fontSize: 18,
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class Cart extends InheritedWidget {
+  final CartProvider cartProvider;
+
+  const Cart({Key? key, required this.cartProvider, required Widget child})
+    : super(key: key, child: child);
+
+  static Cart of(BuildContext context) {
+    final Cart? result = context.dependOnInheritedWidgetOfExactType<Cart>();
+    assert(result != null, 'No Cart found in context');
+    return result!;
+  }
+
+  @override
+  bool updateShouldNotify(Cart oldWidget) {
+    return oldWidget.cartProvider.items != cartProvider.items;
+  }
+}
+
+class CartProvider {
+  List<Map<String, String>> _items = [];
+
+  List<Map<String, String>> get items => _items;
+
+  void addItem(Map<String, String> item) {
+    _items.add(item);
+  }
+
+  void clear() {
+    _items.clear(); // Phương thức này sẽ xóa tất cả sản phẩm trong giỏ hàng
+  }
+
+  void removeItem(int index) {
+    if (index >= 0 && index < _items.length) {
+      _items.removeAt(index);
+    }
+  }
+
+  double totalPrice() {
+    double total = 0.0;
+    for (var item in _items) {
+      // Giả sử giá được lưu dưới dạng chuỗi với định dạng "100,000 VND"
+      String priceString = item['gia']!
+          .replaceAll(',', '')
+          .replaceAll(' VND', '');
+      total += double.tryParse(priceString) ?? 0.0;
+    }
+    return total;
+  }
+}
+
+String formatCurrency(double amount) {
+  // Định dạng số tiền với dấu phẩy
+  return '${amount.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')} VND';
 }
